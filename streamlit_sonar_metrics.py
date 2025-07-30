@@ -29,6 +29,8 @@ st.title("SonarCloud Metrics Exporter")
 # Global variables for authentication and base URL
 auth = None
 SONAR_BASE_URL = "" # This will be set from UI input
+ORG_NAME = "" # This will be set from UI input
+ORG_KEY = "" # This will be set from UI input
 
 # Mapping for numeric ratings to letter grades
 RATING_MAP = {
@@ -313,7 +315,7 @@ def generate_summary_data(metrics_sheet):
     """
     summary_data = {}
 
-    summary_data["Application Name"] = "Trux"
+    summary_data["Application Name"] = ORG_NAME
     total_repos = metrics_sheet.max_row - 1
     summary_data["Total Repos"] = total_repos
 
@@ -394,7 +396,7 @@ def add_summary_sheet_to_workbook(workbook, metrics_sheet):
     summary_sheet = workbook.create_sheet(title="Summary")
 
     summary_sheet["A1"] = "Application Name:"
-    summary_sheet["B1"] = "Trux"
+    summary_sheet["B1"] = ORG_NAME
 
     total_repos = metrics_sheet.max_row - 1
     summary_sheet["A2"] = "Total Repos:"
@@ -713,7 +715,7 @@ def apply_ratings_styles(col_data):
 # ----------------------------- Main Streamlit App -----------------------------
 
 def main_streamlit():
-    global auth, SONAR_BASE_URL
+    global auth, SONAR_BASE_URL, ORG_NAME, ORG_KEY
 
     # Sidebar for inputs (Sonar URL, Token, and Org Key)
     with st.sidebar:
@@ -722,7 +724,8 @@ def main_streamlit():
 
         sonar_url_input = st.text_input("SonarCloud URL", value="https://sonarcloud.io", help="The base URL of your SonarCloud instance (e.g., 'https://sonarcloud.io').")
         sonar_token_input = st.text_input("Sonar Token", type="password", help="Your SonarCloud personal access token.")
-        organization_key_input = st.text_input("Organization Key", value="truxinc", help="Your SonarCloud organization key (e.g., 'truxinc').")
+        organization_name_input = st.text_input("Organization Name", value="<org_name>", help="Your SonarCloud organization Name (e.g., 'XYZ').")
+        organization_key_input = st.text_input("Organization Key", value="<org_key>", help="Your SonarCloud organization key (e.g., 'xyzinc').")
 
         fetch_button = st.button("Fetch SonarCloud Metrics")
 
@@ -733,12 +736,17 @@ def main_streamlit():
             if not sonar_token_input:
                 st.error("Sonar Token not found. Please enter your 'SONAR_TOKEN'.")
                 return
+            if not organization_name_input:
+                st.error("Organization Name not found. Please enter your 'ORGANIZATION_NAME'.")
+                return
             if not organization_key_input:
                 st.error("Organization Key not found. Please enter your 'ORGANIZATION_KEY'.")
                 return
             
             # Set global variables from UI input
-            SONAR_BASE_URL = sonar_url_input.rstrip('/') # Remove trailing slash if present
+            SONAR_BASE_URL = sonar_url_input.rstrip('/')
+            ORG_NAME = organization_name_input.rstrip('/')
+            ORG_KEY = organization_key_input.rstrip('/')
             auth = (sonar_token_input, "")
 
             metric_keys_str = (
@@ -755,7 +763,7 @@ def main_streamlit():
             start_time = datetime.now()
 
             with st.spinner("Connecting to SonarCloud and fetching project list..."):
-                projects = fetch_projects(organization_key_input)
+                projects = fetch_projects(ORG_KEY)
                 if not projects:
                     st.warning("No projects found for the given organization key. Please check your Organization Key and Token.")
                     st.session_state['data_fetched'] = False
