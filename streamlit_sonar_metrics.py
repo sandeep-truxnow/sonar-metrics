@@ -18,12 +18,15 @@ HIGHLIGHT_NA_ROWS = 'background-color: #FFC7CE;' # Light red for all N/A rows
 
 # Set Streamlit page configuration
 st.set_page_config(
-    # page_title="SonarCloud Metrics Exporter",
+    page_title="Sonar Metrics Dashboard",
     layout="wide",
     initial_sidebar_state="auto",
+    page_icon=":bar_chart:",
 )
 
-st.title("SonarCloud Metrics Exporter")
+st.title("Sonar Metrics Dashboard")
+
+
 # st.markdown("This tool fetches SonarCloud metrics for your projects and exports them to an Excel file.")
 
 # Global variables for authentication and base URL
@@ -715,9 +718,6 @@ def apply_ratings_styles(col_data):
 # ----------------------------- Main Streamlit App -----------------------------
 
 def main_streamlit():
-    st.set_page_config(layout="wide", page_title="Sonar Metrics Dashboard", page_icon=":bar_chart:")
-    st.title("Sonar Metrics Dashboard")
-
     global auth, SONAR_BASE_URL, ORG_NAME, ORG_KEY
 
     # Sidebar for inputs (Sonar URL, Token, and Org Key)
