@@ -715,6 +715,9 @@ def apply_ratings_styles(col_data):
 # ----------------------------- Main Streamlit App -----------------------------
 
 def main_streamlit():
+    st.set_page_config(layout="wide", page_title="Sonar Metrics Dashboard", page_icon=":bar_chart:")
+    st.title("Sonar Metrics Dashboard")
+
     global auth, SONAR_BASE_URL, ORG_NAME, ORG_KEY
 
     # Sidebar for inputs (Sonar URL, Token, and Org Key)
