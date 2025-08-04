@@ -46,6 +46,9 @@ RATING_MAP = {
 }
 
 # ----------------------------- Helper Functions -----------------------------
+def add_app_message(msg_type, msg_content):
+    if 'app_messages' not in st.session_state: st.session_state.app_messages = []
+    st.session_state.app_messages.append((msg_type, msg_content))
 
 def make_request(url_path, params=None):
     """
@@ -58,14 +61,14 @@ def make_request(url_path, params=None):
         response.raise_for_status()
 
         if response.status_code != 200:
-            st.error(f"Error: {response.status_code} - {response.text}")
+            add_app_message("Error", f"{response.status_code} - {response.text}")
             return None
         if response.status_code == 204:
-            st.warning("No content returned.")
+            add_app_message("Warning", "No content returned.")
             return None
         return response.json()
     except requests.exceptions.RequestException as e:
-        st.error(f"Request Error: {e}")
+        add_app_message("Error", f"Request Error: {e}")
         return None
 
 def fetch_projects(organization_key):
@@ -620,16 +623,16 @@ def generate_excel_file(projects_data, metric_keys):
     sheet.append(headers)
 
     populate_sheet_with_data(sheet, projects_data, metric_keys)
-    # st.success("Populated sheet with data for Excel export.") # Changed to st.success
+    add_app_message("Info", "Success: Populated sheet with data for Excel export.")
 
     sort_and_clear_sheet(sheet)
-    # st.success("Sorted and cleared the metrics sheet.") # Changed to st.success
+    add_app_message("Info", "Success: Sorted and cleared the metrics sheet.")
 
     format_sheet(sheet, headers)
-    # st.success("Formatted the metrics sheet.") # Changed to st.success
+    add_app_message("Info", "Success: Formatted the metrics sheet.")
 
     highlight_na_rows_excel(sheet)
-    # st.success("Highlighted rows with all 'N/A' values in metrics sheet.") # Changed to st.success
+    add_app_message("Info", "Success: Highlighted rows with all 'N/A' values in metrics sheet.")
 
     auto_adjust_column_width(sheet)
 
@@ -641,7 +644,7 @@ def generate_excel_file(projects_data, metric_keys):
         excel_buffer.seek(0)
         return excel_buffer
     except Exception as e:
-        st.error(f"Error saving workbook: {e}")
+        add_app_message("Error", f"Error saving workbook: {e}")
         return None
 
 # --- UI Specific Styling Functions ---
@@ -733,17 +736,19 @@ def main_streamlit():
         fetch_button = st.button("Fetch SonarCloud Metrics")
 
         if fetch_button:
+            st.session_state.app_messages = []
+   
             if not sonar_url_input:
-                st.error("SonarCloud URL not found. Please enter the URL.")
+                add_app_message("Error", "SonarCloud URL not found. Please enter the URL.")
                 return
             if not sonar_token_input:
-                st.error("Sonar Token not found. Please enter your 'SONAR_TOKEN'.")
+                add_app_message("Error", "Sonar Token not found. Please enter your 'SONAR_TOKEN'.")
                 return
             if not organization_name_input:
-                st.error("Organization Name not found. Please enter your 'ORGANIZATION_NAME'.")
+                add_app_message("Error", "Organization Name not found. Please enter your 'ORGANIZATION_NAME'.")
                 return
             if not organization_key_input:
-                st.error("Organization Key not found. Please enter your 'ORGANIZATION_KEY'.")
+                add_app_message("Error", "Organization Key not found. Please enter your 'ORGANIZATION_KEY'.")
                 return
             
             # Set global variables from UI input
@@ -768,10 +773,10 @@ def main_streamlit():
             with st.spinner("Connecting to SonarCloud and fetching project list..."):
                 projects = fetch_projects(ORG_KEY)
                 if not projects:
-                    st.warning("No projects found for the given organization key. Please check your Organization Key and Token.")
+                    add_app_message("Warning", "No projects found for the given organization key. Please check your Organization Key and Token.")
                     st.session_state['data_fetched'] = False
                     return
-                st.success(f"Successfully connected! Found {len(projects)} projects.")
+                add_app_message("Info", f"Successfully connected! Found {len(projects)} projects.")
 
             progress_text = "Processing project metrics..."
             my_bar = st.progress(0, text=progress_text)
@@ -825,7 +830,7 @@ def main_streamlit():
                         processed_count += 1
                         my_bar.progress(processed_count / len(projects), text=progress_text)
                     except Exception as e:
-                        st.error(f"Error processing project: {future_to_project[future].get('name', 'Unknown')} - {e}")
+                        add_app_message("Error", f"Error processing project: {future_to_project[future].get('name', 'Unknown')} - {e}")
             my_bar.empty()
 
             st.session_state['projects_data_for_ui'] = projects_data_for_ui_raw
@@ -834,10 +839,17 @@ def main_streamlit():
             st.session_state['data_fetched'] = True
 
             end_time = datetime.now()
-            st.success(f"Data fetching complete! Duration: {end_time - start_time}")
+            add_app_message("Info", f"Success: Data fetching complete! Duration: {end_time - start_time}")
 
     # Main content area (right of the sidebar)
     # st.header("SonarCloud Metrics Overview")
+
+    with st.expander("View Processing Logs"):
+        if st.session_state.app_messages:
+            for log_msg in st.session_state.app_messages:
+                st.code(log_msg, language="text")
+        else:
+            st.info("No logs generated yet. Click 'Fetch SonarCloud Metrics' to see activity.")
 
     if 'data_fetched' in st.session_state and st.session_state['data_fetched']:
         # Section 1: Raw Project Metrics
@@ -883,7 +895,7 @@ def main_streamlit():
 
                 st.dataframe(df_metrics_sorted.style.apply(highlight_na_rows_dataframe, axis=1), use_container_width=True)
             else:
-                st.info("No project metrics available to display.")
+                add_app_message("Info", "No project metrics available to display.")
 
         # Create a temporary workbook to generate summary data for UI display
         temp_workbook_for_summary = Workbook()
@@ -1036,15 +1048,17 @@ def main_streamlit():
         st.info("Enter your SonarCloud credentials in the sidebar and click 'Fetch SonarCloud Metrics' to see the data.")
 
 if __name__ == "__main__":
-    if 'data_fetched' not in st.session_state:
+    if 'data_fetched' not in st.session_state: 
         st.session_state['data_fetched'] = False
-    if 'projects_data_for_ui' not in st.session_state:
+    if 'projects_data_for_ui' not in st.session_state: 
         st.session_state['projects_data_for_ui'] = []
-    if 'raw_projects_data_for_excel' not in st.session_state:
+    if 'raw_projects_data_for_excel' not in st.session_state: 
         st.session_state['raw_projects_data_for_excel'] = []
-    if 'metric_keys' not in st.session_state:
+    if 'metric_keys' not in st.session_state: 
         st.session_state['metric_keys'] = ""
-    if 'summary_data' not in st.session_state:
+    if 'summary_data' not in st.session_state: 
         st.session_state['summary_data'] = {}
+    if 'app_messages' not in st.session_state: 
+        st.session_state.app_messages = []
 
     main_streamlit()
