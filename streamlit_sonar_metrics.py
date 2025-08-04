@@ -46,9 +46,15 @@ RATING_MAP = {
 }
 
 # ----------------------------- Helper Functions -----------------------------
-def add_app_message(msg_type, msg_content):
+def add_app_message(level, message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if 'app_messages' not in st.session_state: st.session_state.app_messages = []
-    st.session_state.app_messages.append((msg_type, msg_content))
+    st.session_state.app_messages.append(f"[{timestamp}] [{level.upper()}] {message}")
+
+    if level == "error" or level == "critical":
+        st.error(f"[{timestamp}] {message}")
+    elif level == "warning":
+        st.warning(f"[{timestamp}] {message}")
 
 def make_request(url_path, params=None):
     """
@@ -61,14 +67,14 @@ def make_request(url_path, params=None):
         response.raise_for_status()
 
         if response.status_code != 200:
-            add_app_message("Error", f"{response.status_code} - {response.text}")
+            add_app_message("error", f"{response.status_code} - {response.text}")
             return None
         if response.status_code == 204:
-            add_app_message("Warning", "No content returned.")
+            add_app_message("warning", "No content returned.")
             return None
         return response.json()
     except requests.exceptions.RequestException as e:
-        add_app_message("Error", f"Request Error: {e}")
+        add_app_message("error", f"Request Error: {e}")
         return None
 
 def fetch_projects(organization_key):
@@ -644,7 +650,7 @@ def generate_excel_file(projects_data, metric_keys):
         excel_buffer.seek(0)
         return excel_buffer
     except Exception as e:
-        add_app_message("Error", f"Error saving workbook: {e}")
+        add_app_message("error", f"Error saving workbook: {e}")
         return None
 
 # --- UI Specific Styling Functions ---
@@ -739,16 +745,16 @@ def main_streamlit():
             st.session_state.app_messages = []
    
             if not sonar_url_input:
-                add_app_message("Error", "SonarCloud URL not found. Please enter the URL.")
+                add_app_message("error", "SonarCloud URL not found. Please enter the URL.")
                 return
             if not sonar_token_input:
-                add_app_message("Error", "Sonar Token not found. Please enter your 'SONAR_TOKEN'.")
+                add_app_message("error", "Sonar Token not found. Please enter your 'SONAR_TOKEN'.")
                 return
             if not organization_name_input:
-                add_app_message("Error", "Organization Name not found. Please enter your 'ORGANIZATION_NAME'.")
+                add_app_message("error", "Organization Name not found. Please enter your 'ORGANIZATION_NAME'.")
                 return
             if not organization_key_input:
-                add_app_message("Error", "Organization Key not found. Please enter your 'ORGANIZATION_KEY'.")
+                add_app_message("error", "Organization Key not found. Please enter your 'ORGANIZATION_KEY'.")
                 return
             
             # Set global variables from UI input
@@ -773,7 +779,7 @@ def main_streamlit():
             with st.spinner("Connecting to SonarCloud and fetching project list..."):
                 projects = fetch_projects(ORG_KEY)
                 if not projects:
-                    add_app_message("Warning", "No projects found for the given organization key. Please check your Organization Key and Token.")
+                    add_app_message("warning", "No projects found for the given organization key. Please check your Organization Key and Token.")
                     st.session_state['data_fetched'] = False
                     return
                 add_app_message("Info", f"Successfully connected! Found {len(projects)} projects.")
@@ -830,7 +836,7 @@ def main_streamlit():
                         processed_count += 1
                         my_bar.progress(processed_count / len(projects), text=progress_text)
                     except Exception as e:
-                        add_app_message("Error", f"Error processing project: {future_to_project[future].get('name', 'Unknown')} - {e}")
+                        add_app_message("error", f"Error processing project: {future_to_project[future].get('name', 'Unknown')} - {e}")
             my_bar.empty()
 
             st.session_state['projects_data_for_ui'] = projects_data_for_ui_raw
